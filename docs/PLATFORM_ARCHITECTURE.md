@@ -65,7 +65,8 @@ mOS Link is the desktop-side companion and USB bridge for Mission Link-compatibl
 
 ### Platform and packaging
 
-- Target Windows and Linux first only when their USB and packaging paths are supportable; keep the transport and protocol libraries platform-neutral.
-- On Linux, provide a Qt/Kirigami interface that feels native on KDE Plasma but remains usable on other desktop environments.
+- Target Windows, macOS, and Linux; keep the transport and protocol libraries platform-neutral. The supported host matrix and USB CDC requirements are defined in [MISSION_LINK_USB_PROTOCOL.md](MISSION_LINK_USB_PROTOCOL.md).
+- Treat InntegerOS (Ubuntu/Kubuntu-based) as a first-class Linux target, with an installable package and KDE Plasma integration. Do not make Plasma a hard dependency.
+- Provide Qt 6 UI components that feel native on KDE Plasma while remaining usable on Windows, macOS, and other Linux desktop environments.
 - Use normal signed/repository-based distribution and operating-system installation prompts. The device may advertise the official download location, but it must not pretend to be a trusted installer or bypass host security controls.
 - Keep the companion optional: the XIAO must remain independently usable without a desktop connection.
