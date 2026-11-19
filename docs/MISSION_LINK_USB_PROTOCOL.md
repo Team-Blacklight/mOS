@@ -24,6 +24,54 @@ The companion must distinguish the mOS Link data interface from any serial conso
 
 USB enumeration is discovery only. It does not authorize pairing, trigger a download, or enable input forwarding.
 
+## Cross-platform host compatibility
+
+mOS Link is intended to support the three major desktop operating-system families: Windows, macOS, and Linux. Linux support must include InntegerOS as a first-class target, not merely an untested generic-Linux claim.
+
+### Platform-neutral application architecture
+
+- Keep protocol framing, authentication, capability negotiation, display decoding, and input-event validation in platform-neutral libraries with no OS-specific dependencies.
+- Use Qt 6 for the desktop application UI and Qt SerialPort (QSerialPort) for the USB CDC data interface. Keep platform-specific USB discovery and permission handling behind a small host-adapter interface.
+- Do not depend on KDE Plasma, GNOME, or any single desktop shell for core functionality. KDE Plasma integration is an enhancement; the application must remain fully usable on other Linux desktops.
+- Avoid WebUSB, browser-only transports, Windows-only APIs, Linux-only device paths, or macOS-only frameworks in the shared protocol layer.
+- Treat device paths as opaque host-adapter values. Never hard-code `COM3`, `/dev/ttyACM0`, `/dev/cu.*`, or a fixed USB port.
+- Support hot-plug, reconnect, suspend/resume, multiple connected devices, and permission-denied states without crashing or blocking the UI.
+
+### USB interface compatibility
+
+The preferred initial transport is a dedicated USB CDC ACM/CDC serial interface, provided the final XIAO USB configuration exposes a compatible CDC interface on all target hosts.
+
+- **Windows 10/11:** use the inbox USB serial driver (`usbser.sys`) when the device descriptors are compatible. Avoid requiring a custom kernel driver. If a signed driver package ever becomes unavoidable, treat it as a separate release and security-review requirement.
+- **macOS:** support current supported macOS releases on both Apple Silicon and Intel where the Qt and dependency matrix permits. Use the OS-provided CDC serial support; do not require a third-party kernel extension.
+- **Linux:** support common udev/systemd-based distributions. Provide a narrowly scoped udev rule or documented group/permission setup for the chosen interface; do not tell users to run the app as root. Handle distributions that use different device node names and permission managers.
+- The final USB VID/PID, interface numbers, CDC descriptors, and serial-number policy must be assigned only after checking for conflicts and confirming the exact board/firmware USB configuration. These identifiers are discovery hints, never cryptographic identity.
+- If the board's built-in USB serial/JTAG configuration cannot expose a stable dedicated data interface alongside flashing/debugging, document the limitation and choose a tested composite-interface configuration. Do not assume this works until tested on physical hardware.
+
+### Supported host targets and packaging
+
+| Host OS | Initial target | Distribution expectation | Compatibility requirements |
+|---|---|---|---|
+| Windows | Windows 10 and 11, x64 | Signed installer (MSI or MSIX) and optional portable ZIP | Inbox CDC driver where possible; no admin rights for normal app use |
+| macOS | Supported current macOS releases, Apple Silicon and Intel where feasible | Signed and notarized universal or per-architecture DMG/PKG | No third-party kernel extension; handle Gatekeeper and privacy prompts |
+| Linux | x86_64 and aarch64 where dependencies permit | AppImage plus native packages where practical | udev permissions, desktop integration, no root requirement |
+| InntegerOS | Supported InntegerOS releases (Ubuntu/Kubuntu-based) | Native `.deb` and/or AppImage, with Plasma launcher integration | Test on actual InntegerOS images; use Qt 6 and avoid mandatory KDE-only runtime dependencies |
+
+The app must detect unsupported OS versions and architectures and provide a clear explanation rather than offering an incompatible package. Package signatures and hashes must be published and verified before installation. The device's approved download flow may open the official release/download location, but it must not bypass each OS's normal installation, signing, Gatekeeper, SmartScreen, or package-manager protections.
+
+### Cross-platform verification gates
+
+Before declaring a platform supported, run the same protocol and companion test suite on that platform:
+
+1. Build and unit-test the platform-neutral protocol library.
+2. Build the desktop app for the target OS and architecture.
+3. Test USB CDC discovery, connect/disconnect, reconnect, and multiple-device selection using physical hardware.
+4. Test authentication, pairing, revocation, malformed frames, oversized payloads, and interrupted handshakes.
+5. Test display streaming under slow-host and reconnect conditions.
+6. Test focus loss, release-all behaviour, permission revocation, and keyboard-layout mapping for input forwarding.
+7. Verify clean install, upgrade, uninstall, and package-signature behaviour.
+
+CI should use a Windows, macOS, and Linux build/test matrix for host-side code. Hardware-in-the-loop USB tests cannot be replaced by CI mocks; keep them as explicit release gates and report which board/OS combinations were physically tested. A green Linux CI run alone does not establish Windows or macOS compatibility.
+
 ## Frame envelope
 
 All multi-byte integers are little-endian. A transport frame has this fixed 16-byte header followed by its payload:
