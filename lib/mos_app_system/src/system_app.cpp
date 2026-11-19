@@ -60,9 +60,17 @@ bool SystemApp::onGesture(const GestureEvent& ev, uint32_t nowMs) {
     return true;
   }
 
-  const VolumeInfo& info = storage->info();
-  if (!info.present()) {
-    if (notifier) notifier->notify("No TF card mounted", nowMs);
+  // A tap on an unavailable TF row retries detection, so reinsertion does
+  // not require a reboot. A mounted card uses the same row for safe eject.
+  if (!storage->available()) {
+    const VolumeInfo& refreshed = storage->refresh();
+    if (notifier) {
+      const char* message = "No TF card found";
+      if (refreshed.state == VolumeState::Ready) message = "TF card ready";
+      else if (refreshed.state == VolumeState::ReadOnly) message = "TF read only";
+      else if (refreshed.state == VolumeState::IoError) message = "TF check failed";
+      notifier->notify(message, nowMs);
+    }
     return true;
   }
 
