@@ -39,17 +39,33 @@ std::string handleCommand(const std::string& rawLine, Shell& shell, WatchClock& 
     return out + "]}";
   }
   if (cmd == "status") {
-    char buf[200];
+    char buf[384];
+    const StorageService* storage = shell.storage();
+    const VolumeInfo emptyInfo{};
+    const VolumeInfo& volume = storage ? storage->info() : emptyInfo;
+    const char* storageState = "unavailable";
+    switch (volume.state) {
+      case VolumeState::Unchecked: storageState = "unchecked"; break;
+      case VolumeState::Unavailable: storageState = "unavailable"; break;
+      case VolumeState::Ready: storageState = "ready"; break;
+      case VolumeState::ReadOnly: storageState = "read_only"; break;
+      case VolumeState::IoError: storageState = "io_error"; break;
+    }
     snprintf(buf, sizeof(buf),
              "{\"type\":\"status\",\"firmware\":\"%s\",\"rfEnabled\":%s,\"radioState\":\"%s\","
-             "\"preset\":\"%s\",\"view\":\"%s\",\"app\":\"%s\"}",
+             "\"preset\":\"%s\",\"view\":\"%s\",\"app\":\"%s\","
+             "\"tfState\":\"%s\",\"tfPresent\":%s,\"tfWritable\":%s,"
+             "\"tfCapacityBytes\":%llu,\"tfFreeBytes\":%llu}",
 #ifdef MOS_VERSION
              MOS_STRINGIFY(MOS_VERSION),
 #else
              "native",
 #endif
              dev.rfEnabled ? "true" : "false", dev.radioState, dev.preset, viewName(shell.view()),
-             shell.running() ? shell.running()->name() : "");
+             shell.running() ? shell.running()->name() : "", storageState,
+             volume.present() ? "true" : "false", volume.writable() ? "true" : "false",
+             static_cast<unsigned long long>(volume.capacityBytes),
+             static_cast<unsigned long long>(volume.freeBytes));
     return buf;
   }
   if (cmd == "apps") {
