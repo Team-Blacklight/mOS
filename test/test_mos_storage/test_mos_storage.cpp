@@ -123,6 +123,40 @@ void test_failed_eject_blocks_further_io() {
   TEST_ASSERT_EQUAL_INT(0, fake.writeCalls);
 }
 
+
+void test_reprobe_handles_removal_and_reinsertion() {
+  FakeVolume fake;
+  mos::StorageService storage(&fake);
+  storage.refresh();
+  TEST_ASSERT_TRUE(storage.available());
+
+  // Adapter reports no card after physical removal.
+  fake.next.state = mos::VolumeState::Unavailable;
+  storage.refresh();
+  TEST_ASSERT_FALSE(storage.available());
+  uint8_t data = 7;
+  TEST_ASSERT_FALSE(storage.write("offline.bin", &data, 1));
+
+  // A later probe after reinsertion may mount the card again.
+  fake.next = {mos::VolumeState::Ready, 2048, 1024};
+  storage.refresh();
+  TEST_ASSERT_TRUE(storage.available());
+  TEST_ASSERT_EQUAL_UINT32(2048, storage.info().capacityBytes);
+  TEST_ASSERT_TRUE(storage.write("online.bin", &data, 1));
+}
+
+void test_read_failure_marks_volume_unhealthy() {
+  FakeVolume fake;
+  fake.readOk = false;
+  mos::StorageService storage(&fake);
+  storage.refresh();
+  uint8_t data = 0; size_t bytesRead = 0;
+  TEST_ASSERT_FALSE(storage.read("broken.bin", &data, 1, bytesRead));
+  TEST_ASSERT_EQUAL_UINT32(0, bytesRead);
+  TEST_ASSERT_EQUAL((int)mos::VolumeState::IoError, (int)storage.info().state);
+  TEST_ASSERT_FALSE(storage.available());
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_missing_adapter_is_safe);
@@ -133,5 +167,7 @@ int main(int, char**) {
   RUN_TEST(test_io_failure_marks_volume_unhealthy);
   RUN_TEST(test_eject_flushes_and_marks_volume_unavailable);
   RUN_TEST(test_failed_eject_blocks_further_io);
+  RUN_TEST(test_reprobe_handles_removal_and_reinsertion);
+  RUN_TEST(test_read_failure_marks_volume_unhealthy);
   return UNITY_END();
 }
