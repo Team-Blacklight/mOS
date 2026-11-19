@@ -42,6 +42,7 @@ class Shell : public INotifier, public IPowerControl {
   uint32_t sleepAfterMs() const override { return sleepAfterMs_; }
   View view() const { return view_; }
   App* running() const { return running_; }
+  StorageService* storage() const { return ctx_.storage; }
 
  private:
   Canvas& cv_;
