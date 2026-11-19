@@ -39,8 +39,8 @@ mOS Link is the desktop-side companion and USB bridge for Mission Link-compatibl
 
 1. The host detects a connected, supported Mission Link device using a documented USB interface and identifies its model and protocol capabilities.
 2. The host displays a clear trust prompt, for example: "Do you trust this XIAO?" The prompt identifies the device and explains the requested permissions.
-3. If the user approves, the host opens the official mOS Link download page or package source. USB enumeration must never silently download, install, or execute software.
-4. The user installs and launches mOS Link through the normal host operating-system installation flow.
+3. If the user approves, the host displays a progress state such as **“Downloading mOS companion app”** and downloads the official mOS Link installer/package from the configured official distribution source. Show download progress and clear failure/retry feedback. USB enumeration alone must never trigger a download; the user must approve the trust prompt first.
+4. When the download completes, hand off to the normal host-operating-system installer or package manager. Do not silently execute the installer or bypass OS security prompts; the user confirms installation through the standard OS flow.
 5. The companion performs an authenticated pairing handshake with the device. Trust is stored per device and can be revoked from either side.
 6. Screen mirroring and input forwarding are separate, explicit session permissions. Users can end the session at any time.
 
