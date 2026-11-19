@@ -33,6 +33,9 @@ class IRemovableVolume {
   virtual bool read(const char* path, uint8_t* out, size_t capacity, size_t& bytesRead) = 0;
   virtual bool write(const char* path, const uint8_t* data, size_t length) = 0;
   virtual bool remove(const char* path) = 0;
+  // Flush pending filesystem data and unmount before the card is physically
+  // removed. Adapters that cannot guarantee this must leave the default false.
+  virtual bool eject() { return false; }
 };
 
 // Thin policy wrapper shared by the shell and apps. A null adapter is valid and
@@ -53,6 +56,18 @@ class StorageService {
 
   const VolumeInfo& info() const { return info_; }
   bool available() const { return info_.present(); }
+
+  // Safe removal is explicit: the adapter must flush and unmount successfully
+  // before the service reports the volume as unavailable.
+  bool eject() {
+    if (!volume_ || !info_.present() || !volume_->eject()) {
+      if (volume_ && info_.present()) info_.state = VolumeState::IoError;
+      return false;
+    }
+    info_.state = VolumeState::Unavailable;
+    info_.capacityBytes = info_.freeBytes = 0;
+    return true;
+  }
 
   bool read(const char* path, uint8_t* out, size_t capacity, size_t& bytesRead) {
     bytesRead = 0;
