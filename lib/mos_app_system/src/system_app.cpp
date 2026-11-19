@@ -1,5 +1,6 @@
 #include "system_app.h"
 #include "mos_layout.h"
+#include "mos_gesture.h"
 #include <stdio.h>
 
 namespace mos {
