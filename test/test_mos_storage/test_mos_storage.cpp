@@ -50,6 +50,7 @@ void test_ready_volume_allows_io() {
 void test_read_only_volume_refuses_mutation() {
   FakeVolume fake;
   fake.next.state = mos::VolumeState::ReadOnly;
+  fake.ejectOk = false;
   mos::StorageService storage(&fake);
   storage.refresh();
   uint8_t data = 7;
