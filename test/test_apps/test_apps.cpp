@@ -6,6 +6,7 @@
 #include "stopwatch_app.h"
 #include "system_app.h"
 #include "mos_storage.h"
+#include "mos_layout.h"
 
 using namespace mos;
 
