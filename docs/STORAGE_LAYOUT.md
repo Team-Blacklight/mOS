@@ -10,7 +10,7 @@ Use the round display board's TF card (up to 32 GB, according to the hardware sp
 
 `lib/mos_core/src/mos_storage.h` defines a hardware-independent `StorageService` and `IRemovableVolume` contract. A board-specific adapter is responsible for identifying the actual display board, confirming the TF slot pinout and bus sharing, selecting a supported filesystem, and implementing the adapter. The OS core must not guess GPIO pins or include Arduino SD libraries.
 
-The service distinguishes unchecked, unavailable, ready, read-only, and I/O-error states. A missing card or I/O failure must not crash the shell. Writes are refused unless the volume is mounted and writable. A failed operation moves the service to I/O-error state until the adapter probes again. No automatic formatting is allowed.
+The service distinguishes unchecked, unavailable, ready, read-only, and I/O-error states. Its bounded directory-list API supports listing the card root with an empty path and reading directories on read-only media; adapters must respect the caller-provided entry capacity. An adapter that does not implement listing safely returns unsupported by default. A missing card or I/O failure must not crash the shell. Writes are refused unless the volume is mounted and writable. A failed operation moves the service to I/O-error state until the adapter probes again. No automatic formatting is allowed.
 
 ## Safe removal
 
