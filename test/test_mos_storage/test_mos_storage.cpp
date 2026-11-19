@@ -4,9 +4,9 @@
 class FakeVolume : public mos::IRemovableVolume {
  public:
   mos::VolumeInfo next{mos::VolumeState::Ready, 1024, 512};
-  bool readOk = true, writeOk = true, removeOk = true;
+  bool readOk = true, writeOk = true, removeOk = true, ejectOk = true;
   size_t lastWriteLength = 0;
-  int readCalls = 0, writeCalls = 0, removeCalls = 0;
+  int readCalls = 0, writeCalls = 0, removeCalls = 0, ejectCalls = 0;
   bool reportOversizedRead = false;
   mos::VolumeInfo probe() override { return next; }
   bool read(const char*, uint8_t*, size_t, size_t& bytesRead) override {
@@ -21,6 +21,7 @@ class FakeVolume : public mos::IRemovableVolume {
     return writeOk;
   }
   bool remove(const char*) override { ++removeCalls; return removeOk; }
+  bool eject() override { ++ejectCalls; return ejectOk; }
 };
 
 void test_missing_adapter_is_safe() {
@@ -31,6 +32,7 @@ void test_missing_adapter_is_safe() {
   TEST_ASSERT_FALSE(storage.read("file.bin", out, sizeof(out), n));
   TEST_ASSERT_EQUAL_UINT32(0, n);
   TEST_ASSERT_FALSE(storage.write("file.bin", out, sizeof(out)));
+  TEST_ASSERT_FALSE(storage.eject());
 }
 
 void test_ready_volume_allows_io() {
@@ -54,6 +56,8 @@ void test_read_only_volume_refuses_mutation() {
   TEST_ASSERT_TRUE(storage.available());
   TEST_ASSERT_FALSE(storage.write("file.bin", &data, 1));
   TEST_ASSERT_FALSE(storage.remove("file.bin"));
+  TEST_ASSERT_FALSE(storage.eject());
+  TEST_ASSERT_EQUAL((int)mos::VolumeState::IoError, (int)storage.info().state);
 }
 
 void test_paths_must_stay_inside_volume() {
@@ -91,6 +95,33 @@ void test_io_failure_marks_volume_unhealthy() {
   TEST_ASSERT_FALSE(storage.available());
 }
 
+void test_eject_flushes_and_marks_volume_unavailable() {
+  FakeVolume fake;
+  mos::StorageService storage(&fake);
+  storage.refresh();
+  TEST_ASSERT_TRUE(storage.available());
+  TEST_ASSERT_TRUE(storage.eject());
+  TEST_ASSERT_EQUAL_INT(1, fake.ejectCalls);
+  TEST_ASSERT_FALSE(storage.available());
+  TEST_ASSERT_EQUAL((int)mos::VolumeState::Unavailable, (int)storage.info().state);
+  TEST_ASSERT_EQUAL_UINT32(0, storage.info().capacityBytes);
+  uint8_t data = 7;
+  TEST_ASSERT_FALSE(storage.write("after-eject.bin", &data, 1));
+  TEST_ASSERT_EQUAL_INT(0, fake.writeCalls);
+}
+
+void test_failed_eject_blocks_further_io() {
+  FakeVolume fake;
+  fake.ejectOk = false;
+  mos::StorageService storage(&fake);
+  storage.refresh();
+  TEST_ASSERT_FALSE(storage.eject());
+  TEST_ASSERT_EQUAL((int)mos::VolumeState::IoError, (int)storage.info().state);
+  uint8_t data = 7;
+  TEST_ASSERT_FALSE(storage.write("still-mounted.bin", &data, 1));
+  TEST_ASSERT_EQUAL_INT(0, fake.writeCalls);
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_missing_adapter_is_safe);
@@ -99,5 +130,7 @@ int main(int, char**) {
   RUN_TEST(test_paths_must_stay_inside_volume);
   RUN_TEST(test_oversized_read_result_is_io_error);
   RUN_TEST(test_io_failure_marks_volume_unhealthy);
+  RUN_TEST(test_eject_flushes_and_marks_volume_unavailable);
+  RUN_TEST(test_failed_eject_blocks_further_io);
   return UNITY_END();
 }
