@@ -30,3 +30,40 @@ Potential companion features:
 - Treat the desktop companion as a separate future target with its own build and release pipeline.
 - Do not assume a Linux host is always present; every device must remain independently usable.
 - Radio transmission remains disabled until the hardware, regional rules, and RF behaviour are verified.
+
+## mOS Link desktop companion
+
+mOS Link is the desktop-side companion and USB bridge for Mission Link-compatible XIAO devices. It is distinct from the embedded mOS firmware and from the optional general-purpose Linux device-management UI described above; the projects may share libraries and UI components where that is sensible.
+
+### First-connect and trust flow
+
+1. The host detects a connected, supported Mission Link device using a documented USB interface and identifies its model and protocol capabilities.
+2. The host displays a clear trust prompt, for example: "Do you trust this XIAO?" The prompt identifies the device and explains the requested permissions.
+3. If the user approves, the host opens the official mOS Link download page or package source. USB enumeration must never silently download, install, or execute software.
+4. The user installs and launches mOS Link through the normal host operating-system installation flow.
+5. The companion performs an authenticated pairing handshake with the device. Trust is stored per device and can be revoked from either side.
+6. Screen mirroring and input forwarding are separate, explicit session permissions. Users can end the session at any time.
+
+### Display and input bridge
+
+- **Display mirroring:** mOS Link receives display frames or UI updates from the XIAO over the USB transport and renders them in a resizable desktop window. The embedded round display remains functional and authoritative; mirroring does not require the device to become a USB display adapter.
+- **Keyboard and mouse forwarding:** while the user has an active, focused mOS Link session and has enabled input forwarding, keyboard and pointer events are translated into the device's documented input-event format and delivered to the mOS UI.
+- Input forwarding must not act as a general-purpose host keystroke logger. Capture only events intended for the focused companion window, stop forwarding immediately when the session loses focus or is disconnected, and provide a visible enabled/disabled indicator.
+- The device UI should show when a desktop session is connected and when remote input is enabled. A device-side confirmation may be required for first-time pairing or elevated actions.
+- Do not expose arbitrary host files, shell access, or unrestricted USB/HID injection as a side effect of approving screen mirroring.
+
+### Pairing and transport security
+
+- Use a versioned, documented USB protocol with capability negotiation; do not trust a device based only on its USB product name or serial string.
+- Pairing must authenticate the device and host, resist replay, and establish fresh session keys. Use a reviewed standard cryptographic handshake and authenticated encryption rather than inventing a protocol.
+- Bind stored trust to a device identity backed by a cryptographic key, not a user-editable display name.
+- Make permissions least-privilege and independently revocable: device identification, display stream, input forwarding, and any future file transfer are distinct capabilities.
+- Fail closed on malformed frames, unsupported protocol versions, failed authentication, or interrupted handshakes. Do not silently downgrade to plaintext.
+- Provide a clear "Forget device" action that removes the host's stored trust record. Device-side reset/revocation must also invalidate prior pairings.
+
+### Platform and packaging
+
+- Target Windows and Linux first only when their USB and packaging paths are supportable; keep the transport and protocol libraries platform-neutral.
+- On Linux, provide a Qt/Kirigami interface that feels native on KDE Plasma but remains usable on other desktop environments.
+- Use normal signed/repository-based distribution and operating-system installation prompts. The device may advertise the official download location, but it must not pretend to be a trusted installer or bypass host security controls.
+- Keep the companion optional: the XIAO must remain independently usable without a desktop connection.
