@@ -110,11 +110,15 @@ void test_shell_sleep_timeout_has_floor() {
 
 struct EjectVolume : IRemovableVolume {
   int ejectCalls = 0;
-  VolumeInfo probe() override { return {VolumeState::Ready, 4096, 2048}; }
+  bool inserted = true;
+  VolumeInfo probe() override {
+    return inserted ? VolumeInfo{VolumeState::Ready, 4096, 2048}
+                    : VolumeInfo{VolumeState::Unavailable, 0, 0};
+  }
   bool read(const char*, uint8_t*, size_t, size_t& n) override { n = 0; return true; }
   bool write(const char*, const uint8_t*, size_t) override { return true; }
   bool remove(const char*) override { return true; }
-  bool eject() override { ++ejectCalls; return true; }
+  bool eject() override { ++ejectCalls; inserted = false; return true; }
 };
 
 void test_system_app_tap_requests_safe_tf_eject() {
@@ -133,6 +137,14 @@ void test_system_app_tap_requests_safe_tf_eject() {
   TEST_ASSERT_FALSE(storage.available());
   shell.render(101);
   TEST_ASSERT_TRUE(cv.has("TF safe to remove"));
+
+  // Reinsert the card and tap the unavailable TF row to reprobe without reboot.
+  volume.inserted = true;
+  TEST_ASSERT_TRUE(system.onGesture(ev(Gesture::Tap, 8, ejectY), 200));
+  TEST_ASSERT_TRUE(storage.available());
+  TEST_ASSERT_EQUAL_UINT32(4096, storage.info().capacityBytes);
+  shell.render(201);
+  TEST_ASSERT_TRUE(cv.has("TF card ready"));
 }
 
 int main(int, char**) {
