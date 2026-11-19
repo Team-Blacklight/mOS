@@ -17,9 +17,10 @@ int main(void)
     assert(state.timeout_ms == MOS_SCREEN_TIMEOUT_MIN_MS);
     mos_screen_timeout_set(&state, UINT32_MAX);
     assert(state.timeout_ms == MOS_SCREEN_TIMEOUT_MAX_MS);
-    mos_screen_timeout_init(&state, UINT32_MAX - 10000u, 5000u);
-    assert(!mos_screen_timeout_poll(&state, 3000u));
-    assert(mos_screen_timeout_poll(&state, 6000u));
+    /* Cross UINT32_MAX: 3001 ms elapsed at 1000, then 5001 ms at 3000. */
+    mos_screen_timeout_init(&state, UINT32_MAX - 2000u, 5000u);
+    assert(!mos_screen_timeout_poll(&state, 1000u));
+    assert(mos_screen_timeout_poll(&state, 3000u));
     mos_screen_timeout_init(&state, 0u, 5000u);
     mos_screen_timeout_activity(&state, 100u);
     assert(!mos_screen_timeout_poll(&state, 5099u));
