@@ -33,6 +33,8 @@ Potential companion features:
 
 ## mOS Link desktop companion
 
+The proposed USB framing, pairing, display, and input contract is documented in [MISSION_LINK_USB_PROTOCOL.md](MISSION_LINK_USB_PROTOCOL.md). It is a draft until the board USB configuration and cryptographic implementation are selected and validated.
+
 mOS Link is the desktop-side companion and USB bridge for Mission Link-compatible XIAO devices. It is distinct from the embedded mOS firmware and from the optional general-purpose Linux device-management UI described above; the projects may share libraries and UI components where that is sensible.
 
 ### First-connect and trust flow
