@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MOS_STRINGIFY_INNER(value) #value
+#define MOS_STRINGIFY(value) MOS_STRINGIFY_INNER(value)
+
 namespace mos {
 static std::string err(const char* code, const char* msg) {
   return std::string("{\"type\":\"error\",\"code\":\"") + code + "\",\"message\":\"" + msg + "\"}";
@@ -41,7 +44,7 @@ std::string handleCommand(const std::string& rawLine, Shell& shell, WatchClock& 
              "{\"type\":\"status\",\"firmware\":\"%s\",\"rfEnabled\":%s,\"radioState\":\"%s\","
              "\"preset\":\"%s\",\"view\":\"%s\",\"app\":\"%s\"}",
 #ifdef MOS_VERSION
-             MOS_VERSION,
+             MOS_STRINGIFY(MOS_VERSION),
 #else
              "native",
 #endif
