@@ -4,6 +4,9 @@
 #include "mos_store.h"
 #include "settings_app.h"
 #include "stopwatch_app.h"
+#include "system_app.h"
+#include "mos_storage.h"
+#include "mos_layout.h"
 
 using namespace mos;
 
@@ -104,6 +107,46 @@ void test_shell_sleep_timeout_has_floor() {
   TEST_ASSERT_TRUE(f.shell.asleep(60000));
 }
 
+
+struct EjectVolume : IRemovableVolume {
+  int ejectCalls = 0;
+  bool inserted = true;
+  VolumeInfo probe() override {
+    return inserted ? VolumeInfo{VolumeState::Ready, 4096, 2048}
+                    : VolumeInfo{VolumeState::Unavailable, 0, 0};
+  }
+  bool read(const char*, uint8_t*, size_t, size_t& n) override { n = 0; return true; }
+  bool write(const char*, const uint8_t*, size_t) override { return true; }
+  bool remove(const char*) override { return true; }
+  bool eject() override { ++ejectCalls; inserted = false; return true; }
+};
+
+void test_system_app_tap_requests_safe_tf_eject() {
+  RecCanvas cv; WatchClock clock; DeviceInfo dev; NullSink radio;
+  EjectVolume volume;
+  StorageService storage(&volume);
+  storage.refresh();
+  Shell shell(cv, clock, dev, radio, nullptr, &storage);
+  SystemApp system;
+  TEST_ASSERT_TRUE(shell.addApp(&system));
+  TEST_ASSERT_TRUE(shell.open("System", 0));
+
+  const int ejectY = headerH() + 1 + 5 * FONT_H + 1;
+  TEST_ASSERT_TRUE(system.onGesture(ev(Gesture::Tap, 8, ejectY), 100));
+  TEST_ASSERT_EQUAL_INT(1, volume.ejectCalls);
+  TEST_ASSERT_FALSE(storage.available());
+  shell.render(101);
+  TEST_ASSERT_TRUE(cv.has("TF safe to remove"));
+
+  // Reinsert the card and tap the unavailable TF row to reprobe without reboot.
+  volume.inserted = true;
+  TEST_ASSERT_TRUE(system.onGesture(ev(Gesture::Tap, 8, ejectY), 200));
+  TEST_ASSERT_TRUE(storage.available());
+  TEST_ASSERT_EQUAL_UINT32(4096, storage.info().capacityBytes);
+  shell.render(201);
+  TEST_ASSERT_TRUE(cv.has("TF card ready"));
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_stopwatch_start_stop_resume_reset);
@@ -111,5 +154,6 @@ int main(int, char**) {
   RUN_TEST(test_settings_adjust_apply_and_persist);
   RUN_TEST(test_settings_limits_corrupt_store_and_no_store);
   RUN_TEST(test_shell_sleep_timeout_has_floor);
+  RUN_TEST(test_system_app_tap_requests_safe_tf_eject);
   return UNITY_END();
 }

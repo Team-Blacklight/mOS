@@ -23,6 +23,9 @@
 #include <Adafruit_SSD1306.h>
 #endif
 
+#define MOS_STRINGIFY_INNER(value) #value
+#define MOS_STRINGIFY(value) MOS_STRINGIFY_INNER(value)
+
 static constexpr size_t MAX_COMMAND_BYTES = 256;
 
 // ---- display -----------------------------------------------------------------
@@ -211,7 +214,7 @@ static void pollSerial() {
 void setup() {
   Serial.begin(115200);
   delay(300);
-  Serial.println("{\"type\":\"boot\",\"firmware\":\"" MOS_VERSION "\",\"rfEnabled\":false}");
+  Serial.println("{\"type\":\"boot\",\"firmware\":\"" MOS_STRINGIFY(MOS_VERSION) "\",\"rfEnabled\":false}");
 
   uint8_t mac[6] = {0};
   if (esp_read_mac(mac, ESP_MAC_WIFI_STA) == ESP_OK) {

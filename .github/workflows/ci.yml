@@ -13,5 +13,10 @@ jobs:
       - run: pip install platformio
       - name: Native logic tests
         run: pio test -e native
+      - name: Build and test desktop protocol core
+        run: |
+          cmake -S desktop/mos_link/protocol -B build/mos-link-protocol -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/mos-link-protocol --parallel
+          ctest --test-dir build/mos-link-protocol --output-on-failure
       - name: Compile ESP32-S3 firmware
         run: pio run -e xiao_esp32s3

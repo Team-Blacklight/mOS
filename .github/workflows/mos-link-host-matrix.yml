@@ -1,0 +1,23 @@
+name: mOS Link host protocol matrix
+
+on:
+  push:
+    branches: ["main", "feature/**"]
+  pull_request:
+
+jobs:
+  protocol-core:
+    name: Protocol core (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure protocol core
+        run: cmake -S desktop/mos_link/protocol -B build/mos-link-protocol -DCMAKE_BUILD_TYPE=Release
+      - name: Build protocol core
+        run: cmake --build build/mos-link-protocol --config Release --parallel
+      - name: Run protocol tests
+        run: ctest --test-dir build/mos-link-protocol --build-config Release --output-on-failure

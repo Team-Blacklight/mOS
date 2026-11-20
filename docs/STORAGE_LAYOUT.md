@@ -10,7 +10,11 @@ Use the round display board's TF card (up to 32 GB, according to the hardware sp
 
 `lib/mos_core/src/mos_storage.h` defines a hardware-independent `StorageService` and `IRemovableVolume` contract. A board-specific adapter is responsible for identifying the actual display board, confirming the TF slot pinout and bus sharing, selecting a supported filesystem, and implementing the adapter. The OS core must not guess GPIO pins or include Arduino SD libraries.
 
-The service distinguishes unchecked, unavailable, ready, read-only, and I/O-error states. A missing card or I/O failure must not crash the shell. Writes are refused unless the volume is mounted and writable. A failed operation moves the service to I/O-error state until the adapter probes again. No automatic formatting is allowed.
+The service distinguishes unchecked, unavailable, ready, read-only, and I/O-error states. Its bounded directory-list API supports listing the card root with an empty path and reading directories on read-only media; adapters must respect the caller-provided entry capacity. An adapter that does not implement listing safely returns unsupported by default. A missing card or I/O failure must not crash the shell. Writes are refused unless the volume is mounted and writable. A failed operation moves the service to I/O-error state until the adapter probes again. No automatic formatting is allowed.
+
+## Safe removal
+
+Apps and the shell should request `StorageService::eject()` before a user physically removes the card. The board adapter must flush pending writes and unmount the filesystem before returning success. If it cannot guarantee that operation, it must return false; the service then blocks further I/O by marking the volume unhealthy. A successful eject clears the reported capacity and marks the card unavailable. The adapter must be probed again after reinsertion.
 
 ## Boot sequence
 
@@ -26,7 +30,7 @@ The service distinguishes unchecked, unavailable, ready, read-only, and I/O-erro
 - Avoid repeated whole-file rewrites; batch optional logs and exports.
 - Never store credentials or private keys as plaintext on removable media.
 - Treat the card as removable and corruptible; check every operation result.
-- Do not format an unknown filesystem automatically.
+- Never format an unknown filesystem automatically.
 - mOS Static may instantiate `StorageService` without an adapter.
 
 ## Hardware integration acceptance criteria
@@ -34,5 +38,5 @@ The service distinguishes unchecked, unavailable, ready, read-only, and I/O-erro
 - [ ] Confirm exact round-display SKU and inspect its schematic before assigning pins.
 - [ ] Watch boots with no card and all built-in apps remain usable.
 - [ ] Test ready, read-only, absent, full-volume and I/O-error behaviour with a fake adapter.
-- [ ] Test mount, read/write, removal and recovery on the real board.
+- [ ] Test safe eject, mount, read/write, removal and recovery on the real board.
 - [ ] Confirm card access does not conflict with the LoRa radio or display bus.
