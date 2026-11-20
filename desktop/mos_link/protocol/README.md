@@ -9,6 +9,8 @@ This directory contains the first platform-neutral host-side implementation of t
 - Handles partial reads and multiple frames in one input chunk.
 - Rejects bad magic, non-zero reserved flags, null input with non-zero length, and payloads larger than the protocol's 4096-byte limit.
 - Uses caller-owned output storage; the decoder retains at most one incomplete frame between calls.
+- Rejects invalid magic, reserved flags, and oversized lengths as soon as each field is available.
+- Uses runtime test checks that remain active in Release builds (not disabled by `NDEBUG`).
 
 ## Explicitly not implemented
 
