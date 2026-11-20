@@ -61,10 +61,26 @@ int main() {
   CHECK(!mos_link::encodeFrame(invalid, encoded, &error));
   CHECK(error == FrameError::ReservedFlags);
 
-  // The decoder must reject bad magic as soon as the four-byte prefix exists.
-  const std::uint8_t bad[] = {'N', 'O', 'P', 'E'};
-  CHECK(!decoder.feed(bad, sizeof(bad), decoded, &error));
+  // Bad magic is rejected as soon as its four-byte prefix is available.
+  const std::uint8_t badMagic[] = {'N', 'O', 'P', 'E'};
+  CHECK(!decoder.feed(badMagic, sizeof(badMagic), decoded, &error));
   CHECK(error == FrameError::BadMagic);
+  CHECK(decoder.bufferedBytes() == 0);
+
+  // Invalid reserved flags are rejected as soon as bytes 8-9 arrive.
+  const std::uint8_t badFlags[] = {
+      'M', 'L', 'N', 'K', 1, 0, 1, 0, 1, 0
+  };
+  CHECK(!decoder.feed(badFlags, sizeof(badFlags), decoded, &error));
+  CHECK(error == FrameError::ReservedFlags);
+  CHECK(decoder.bufferedBytes() == 0);
+
+  // Oversized payload lengths are rejected before payload buffering.
+  const std::uint8_t oversized[] = {
+      'M', 'L', 'N', 'K', 1, 0, 1, 0, 0, 0, 1, 0x10
+  };
+  CHECK(!decoder.feed(oversized, sizeof(oversized), decoded, &error));
+  CHECK(error == FrameError::PayloadTooLarge);
   CHECK(decoder.bufferedBytes() == 0);
 
   CHECK(!decoder.feed(nullptr, 1, decoded, &error));
