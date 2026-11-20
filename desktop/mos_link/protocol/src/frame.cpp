@@ -75,7 +75,6 @@ bool FrameDecoder::feed(const std::uint8_t* data, std::size_t size,
   }
 
   for (std::size_t i = 0; i < size; ++i) {
-    // Never allow an incomplete candidate to grow beyond one maximum frame.
     if (buffer_.size() >= kHeaderSize + kMaxPayloadSize) {
       reset();
       setError(error, FrameError::PayloadTooLarge);
@@ -83,36 +82,33 @@ bool FrameDecoder::feed(const std::uint8_t* data, std::size_t size,
     }
     buffer_.push_back(data[i]);
 
-    if (buffer_.size() < kHeaderSize) continue;
-
-    if (!std::equal(std::begin(kMagic), std::end(kMagic), buffer_.begin())) {
+    // Validate each header field as soon as enough bytes have arrived.
+    if (buffer_.size() == 4 &&
+        !std::equal(std::begin(kMagic), std::end(kMagic), buffer_.begin())) {
       reset();
       setError(error, FrameError::BadMagic);
       return false;
     }
-
-    const auto flags = read16(buffer_, 8);
-    if (flags != 0) {
+    if (buffer_.size() == 10 && read16(buffer_, 8) != 0) {
       reset();
       setError(error, FrameError::ReservedFlags);
       return false;
     }
-
-    const auto payloadSize = read16(buffer_, 10);
-    if (payloadSize > kMaxPayloadSize) {
+    if (buffer_.size() == 12 && read16(buffer_, 10) > kMaxPayloadSize) {
       reset();
       setError(error, FrameError::PayloadTooLarge);
       return false;
     }
 
-    const std::size_t frameSize = kHeaderSize + payloadSize;
+    if (buffer_.size() < kHeaderSize) continue;
+    const std::size_t frameSize = kHeaderSize + read16(buffer_, 10);
     if (buffer_.size() != frameSize) continue;
 
     Frame frame;
     frame.major = buffer_[4];
     frame.minor = buffer_[5];
     frame.type = read16(buffer_, 6);
-    frame.flags = flags;
+    frame.flags = read16(buffer_, 8);
     frame.sequence = read32(buffer_, 12);
     frame.payload.assign(buffer_.begin() + kHeaderSize, buffer_.end());
     output.push_back(std::move(frame));
